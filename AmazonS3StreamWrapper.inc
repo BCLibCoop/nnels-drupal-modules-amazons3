@@ -1,4 +1,5 @@
 <?php
+require_once 'amazons3.aws.inc';
 
 /**
  * @file
@@ -120,6 +121,8 @@ class AmazonS3StreamWrapper implements DrupalStreamWrapperInterface {
   public function __construct() {
     $this->hostname = variable_get('amazons3_hostname', '');
     $this->bucket = $bucket = variable_get('amazons3_bucket', '');
+    $this->use_ssl = variable_get('amazons3_ssl', 1);
+    $scheme = $this->use_ssl ? 'https://' : 'http://';
 
     // CNAME support for customising S3 URLs.
     if (variable_get('amazons3_cname', 0)) {
@@ -130,11 +133,10 @@ class AmazonS3StreamWrapper implements DrupalStreamWrapperInterface {
       else {
         $this->domain = '//' . $this->bucket;
       }
-
       $this->cloudfront = variable_get('amazons3_cloudfront', TRUE);
     }
     else {
-      $this->domain = '//' . $this->bucket . '.s3.amazonaws.com';
+      $this->domain = $this->__getBucketPathBaseURL();
     }
 
     // Check whether local file caching is turned on.
@@ -184,6 +186,44 @@ class AmazonS3StreamWrapper implements DrupalStreamWrapperInterface {
 
   }
 
+  /**
+   * Return the constructed hostname to use for reaching S3
+   *
+   * One of the following formats:
+   * - //hostname.resource-prefix
+   * - //hostname.resource-prefix.bucket
+   * - //vhost
+   * - //hostname
+   * - //hostname.bucket
+   *
+   * @return string
+   *   Returns a string containing a web accessible base URL for the bucket
+   */
+  protected function __getBucketPathBaseURL() {
+      $s3 = $this->getS3();
+      $bucket = $this->bucket;
+      /* Start of code borrowed & modified from the AmazonS3::authenticate */
+      // If the bucket name has periods and we are using SSL, we need to switch to path style URLs
+      $bucket_name_may_cause_ssl_wildcard_failures = false;
+      if ($s3->use_ssl && strpos($bucket, '.') !== false)
+      {
+          $bucket_name_may_cause_ssl_wildcard_failures = true;
+      }
+      // Determine hostname
+      $scheme = $s3->use_ssl ? 'https://' : 'http://';
+      if ($bucket_name_may_cause_ssl_wildcard_failures || $s3->resource_prefix || $s3->path_style)
+      {
+          // Use bucket-in-path method
+          $hostname = $s3->hostname . $s3->resource_prefix . (($bucket === '' || $s3->resource_prefix === '/' . $bucket) ? '' : ('/' . $bucket));
+      }
+      else
+      {
+          $hostname = $s3->vhost ? $s3->vhost : (($bucket === '') ? $s3->hostname : ($bucket . '.') . $s3->hostname);
+      }
+      /* End of borrowed code */
+      //return '//'.$hostname;
+      return $scheme.$hostname;
+  }
 
   /**
    * Sets the stream resource URI.
@@ -1014,11 +1054,7 @@ class AmazonS3StreamWrapper implements DrupalStreamWrapperInterface {
       }
       else {
         try {
-          $this->s3 = new AmazonS3();
-          if (!empty($this->hostname)) {
-            $this->s3->set_hostname($this->hostname);
-            $this->s3->allow_hostname_override(FALSE);
-          }
+          $this->s3 = CreateS3Instance();
         }
         catch (Exception $e) {
           drupal_set_message(t('There was a problem using S3. @message', array('message' => $e->getMessage())), 'error');

@@ -37,13 +37,13 @@ function hook_amazons3_url_info($local_path, $info) {
     $info['presigned_url'] = TRUE;
     $info['presigned_url_timeout'] = 10;
   }
-  
+
   $cache_time = 60 * 60 * 5;
   $info['response'] = array(
     'Cache-Control' => 'max-age=' . $cache_time . ', must-revalidate',
     'Expires' => gmdate('D, d M Y H:i:s', time() + $cache_time) . ' GMT',
   );
-  
+
   return $info;
 }
 
