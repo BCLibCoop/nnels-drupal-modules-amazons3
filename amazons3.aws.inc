@@ -9,7 +9,7 @@
  * You are responsible for loading the awssdk library beforehand YOURSELF.
  */
 function CreateS3Instance() {
-	$s3 = new AmazonS3();
+  $s3 = new AmazonS3();
   // Custom S3 setup
   $hostname = variable_get('amazons3_hostname', '');
   if (!empty($hostname)) {
@@ -21,9 +21,11 @@ function CreateS3Instance() {
     //$this->s3->disable_ssl();
     $s3->use_ssl = false; // disable_ssl spews a warning
   }
-  if (variable_get('amazons3_path_style', 0)) {
+  $path = variable_get('amazons3_path_style', 0);
+  if ($path != 0) {
     $s3->enable_path_style();
   }
+  drupal_set_message(t('hostname=@hostname; ssl=@ssl; path=@path', array('@hostname'=>$hostname, '@ssl'=>$ssl, '@path' => $path)));
   return $s3;
 }
 

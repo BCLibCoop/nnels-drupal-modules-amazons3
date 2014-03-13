@@ -216,6 +216,7 @@ function amazons3_admin_validate($form, &$form_state) {
   else {
     try {
       $s3 = CreateS3Instance();
+      // Check for bucket
       // Check for objects
       $response = $s3->list_objects($bucket, array(
           'max-keys' => 1,
