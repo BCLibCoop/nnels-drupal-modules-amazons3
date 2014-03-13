@@ -25,7 +25,7 @@ function CreateS3Instance() {
   if ($path != 0) {
     $s3->enable_path_style();
   }
-  drupal_set_message(t('hostname=@hostname; ssl=@ssl; path=@path', array('@hostname'=>$hostname, '@ssl'=>$ssl, '@path' => $path)));
+  //drupal_set_message(t('hostname=@hostname; ssl=@ssl; path=@path', array('@hostname'=>$hostname, '@ssl'=>$ssl, '@path' => $path)));
   return $s3;
 }
 
