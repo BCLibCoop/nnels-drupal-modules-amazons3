@@ -499,7 +499,8 @@ class StreamWrapper extends \Aws\S3\StreamWrapper implements \DrupalStreamWrappe
         $args
       )
     );
-    $this->injectCname($url);
+    //Inject CNAME if variable set
+    if (variable_get('amazons3_cname') == TRUE) $this->injectCname($url);
     return $url;
   }
 
