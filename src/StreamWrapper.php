@@ -192,7 +192,13 @@ class StreamWrapper extends \Aws\S3\StreamWrapper implements \DrupalStreamWrappe
     if ($uri == 's3://') {
       $uri = 's3://' . $this->config->getBucket();
     }
-
+    //Fix image style path before processing
+    if ( preg_match('/s3:\/\/styles\/(.+)\/s3\/(nnels.+)\/(book-covers.+)/',
+      $uri,
+      $matched ) ) {
+      //1 => style name, 2 => bucket, 3 => prefix/filename
+      $uri = "s3://{$matched[2]}/styles/{$matched[1]}/s3/{$matched[3]}";
+    }
     $this->uri = S3Url::factory($uri);
   }
 
@@ -218,8 +224,16 @@ class StreamWrapper extends \Aws\S3\StreamWrapper implements \DrupalStreamWrappe
     // Delivers the first request to an image from the private file system
     // otherwise it returns an external URL to an image that has not been
     // created yet.
+
     if (!empty($path_segments) && $path_segments[0] === 'styles' && !file_exists((string) $this->uri)) {
-      return $this->url($this::stylesCallback . '/' . $this->uri->getBucket() . $this->uri->getPath(), array('absolute' => TRUE));
+      if ($image_callback_path = variable_get('nnels_cc_s3_image_style_callback')) {
+        return $this->url($image_callback_path . $this->uri->getPath(),
+          array('absolute' => TRUE));
+      }
+      else {
+        return $this->url($this::stylesCallback . '/' . $this->uri->getBucket()
+          . $this->uri->getPath(), array('absolute' => TRUE));
+      }
     }
 
     // UI overrides.
@@ -424,7 +438,9 @@ class StreamWrapper extends \Aws\S3\StreamWrapper implements \DrupalStreamWrappe
    *   otherwise.
    */
   protected function usePresigned() {
-    return $this->config->getPresignedPaths()->match($this->getLocalPath());
+    return $this->config->getPresignedPaths()->match
+    ($this->uri->getHost() . '/' . $this->getLocalPath
+    ());
   }
 
   /**
@@ -501,6 +517,8 @@ class StreamWrapper extends \Aws\S3\StreamWrapper implements \DrupalStreamWrappe
     );
     //Inject CNAME if variable set
     if (variable_get('amazons3_cname') == TRUE) $this->injectCname($url);
+    if (variable_get('amazons3_implicit_bucket') == 1)
+//      $url->setHost($url->getHost() . '/' . $this->config->getBucket());
     return $url;
   }
 
